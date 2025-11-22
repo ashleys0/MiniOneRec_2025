@@ -30,7 +30,7 @@ def set_seed(seed):
 def train(
     # model/data params
     model_path: str = "",
-    seed: int = 42,
+    seed: int = 32,
     train_file: str = "",
     eval_file: str = "",
     info_file: str = "",
@@ -47,7 +47,7 @@ def train(
     gradient_accumulation_steps: int = 1,
     temperature: float = 1.0,
     add_gt: bool = False,
-    eval_step: float = 0.199,
+    eval_step: float = 0.05,
     num_generations: int = 16,
     num_train_epochs: int = 1,
     learning_rate: float = 1e-6,
@@ -258,11 +258,11 @@ def train(
         reward_fun = cf_reward
     
     os.environ['WANDB_PROJECT'] = wandb_project
-    os.environ["WANDB_MODE"] = "offline"
+    os.environ["WANDB_MODE"] = "online"
 
     training_args = GRPOConfig(output_dir=output_dir,
                                 save_steps=0.1,
-                                save_total_limit=20,
+                                save_total_limit=10,
                                 eval_strategy="steps",
                                 max_completion_length=128,
                                 num_generations=num_generations,
@@ -284,6 +284,9 @@ def train(
                                 save_strategy="steps",
                                 report_to="wandb",
                                 run_name=wandb_run_name,
+                                load_best_model_at_end=True,
+                                metric_for_best_model="eval_NDCG@10",
+                                greater_is_better=True
                             )
     trainer = ReReTrainer(
         model=model_path,

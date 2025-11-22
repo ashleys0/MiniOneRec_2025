@@ -218,11 +218,11 @@ class ReReTrainer(Trainer):
         #* sample
         add_gt: bool = False,
         dynamic_sampling: bool = False,
-        beam_search: bool = False,
+        beam_search: bool = True,   # originally False
         length_penalty: float = 0.0,
         #* eval
         test_during_training: bool = True,
-        test_beam: int = 20,
+        test_beam: int = 16,    # originally 20 by authors
 
         #*loss
         dapo: bool = False,
@@ -1087,6 +1087,18 @@ class ReReTrainer(Trainer):
         else:  # transformers<=4.46
             super().log(logs)
         self._metrics.clear()
+
+    # overriding evaluation_loop so that adding eval_ndcg@10 doesn't cause issues
+    # This intercepts the metrics before evaluate() calls log(), so they get included in both the logs and the return value.
+    def evaluation_loop(self, dataloader, description, prediction_loss_only=None, ignore_keys=None, metric_key_prefix="eval"):
+        output = super().evaluation_loop(dataloader, description, prediction_loss_only, ignore_keys, metric_key_prefix)
+        # add custom metrics before evaluate() calls log()
+        if self._metrics:
+            custom_metrics = {key: sum(val) / len(val) for key, val in self._metrics.items()}
+            custom_metrics = {f"{metric_key_prefix}_{key}": val for key, val in custom_metrics.items()}
+            output.metrics.update(custom_metrics)
+        
+        return output
 
     def create_model_card(
         self,
